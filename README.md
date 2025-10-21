@@ -3,7 +3,7 @@
 This repository packages your `RealEstateToken` contract with a **complete Foundry test suite**:
 - Unit tests (pause/freeze/lock/whitelist/roles/forceTransfer, delegation, burnFrom, interfaces)
 - Fuzz tests (transfer vs. locked balance)
-- Invariant checks (locked ≤ balance; votes == balances once self-delegated)
+- Invariant checks (locked <= balance; votes == balances once self-delegated)
 
 > **Note:** The contract targets **OpenZeppelin Contracts v5.x**. I updated the import
 > `interfaces/draft-IERC6093.sol` → `interfaces/IERC20Errors.sol` to align with OZ v5.
