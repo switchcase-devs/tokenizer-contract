@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 import { Test } from "forge-std/Test.sol";
 import { RealEstateToken } from "src/RealEstateToken.sol";
 import { Actors } from "test/utils/Actors.sol";
+import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 contract RealEstateToken_Permit_Test is Test {
     RealEstateToken token;
@@ -12,7 +13,17 @@ contract RealEstateToken_Permit_Test is Test {
     address spender = address(0xB0B);
 
     function setUp() public {
-        token = new RealEstateToken("Estate", "EST", 1_000_000, admin);
+        RealEstateToken impl = new RealEstateToken();
+        bytes memory initData = abi.encodeWithSelector(
+            RealEstateToken.initialize.selector,
+            "Estate",
+            "EST",
+            uint256(1_000_000),
+            admin
+        );
+        ERC1967Proxy proxy = new ERC1967Proxy(address(impl), initData);
+        token = RealEstateToken(payable(address(proxy)));
+
         assertTrue(token.transfer(owner, 100_000));
     }
 
@@ -22,7 +33,7 @@ contract RealEstateToken_Permit_Test is Test {
         address spenderAddr,
         uint256 value,
         uint256 deadline
-    ) internal returns (uint8 v, bytes32 r, bytes32 s) {
+    ) internal view returns (uint8 v, bytes32 r, bytes32 s) {
         bytes32 typehash = keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
         bytes32 DOMAIN_SEPARATOR = token.DOMAIN_SEPARATOR();
         bytes32 structHash = keccak256(abi.encode(

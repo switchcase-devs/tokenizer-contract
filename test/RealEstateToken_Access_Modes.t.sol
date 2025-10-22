@@ -6,6 +6,7 @@ import { RealEstateToken } from "src/RealEstateToken.sol";
 import { IAccessControl } from "@openzeppelin/contracts/access/IAccessControl.sol";
 import { Actors } from "test/utils/Actors.sol";
 import "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
+import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 contract RealEstateToken_Access_Modes_Test is Test {
     RealEstateToken token;
@@ -15,7 +16,17 @@ contract RealEstateToken_Access_Modes_Test is Test {
     address carol = Actors.CAROL;
 
     function setUp() public {
-        token = new RealEstateToken("Estate", "EST", 1_000_000, admin);
+        RealEstateToken impl = new RealEstateToken();
+        bytes memory initData = abi.encodeWithSelector(
+            RealEstateToken.initialize.selector,
+            "Estate",
+            "EST",
+            uint256(1_000_000),
+            admin
+        );
+        ERC1967Proxy proxy = new ERC1967Proxy(address(impl), initData);
+        token = RealEstateToken(payable(address(proxy)));
+
         assertTrue(token.transfer(alice, 100_000));
         assertTrue(token.transfer(bob,   100_000));
         assertTrue(token.transfer(carol, 100_000));

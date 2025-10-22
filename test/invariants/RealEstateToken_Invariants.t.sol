@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 import { Test } from "forge-std/Test.sol";
 import { RealEstateToken } from "src/RealEstateToken.sol";
 import { Actors } from "test/utils/Actors.sol";
+import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 contract RealEstateToken_Invariants is Test {
     RealEstateToken token;
@@ -13,7 +14,17 @@ contract RealEstateToken_Invariants is Test {
     address carol = Actors.CAROL;
 
     function setUp() public {
-        token = new RealEstateToken("Estate", "EST", 1000, admin);
+        RealEstateToken impl = new RealEstateToken();
+        bytes memory initData = abi.encodeWithSelector(
+            RealEstateToken.initialize.selector,
+            "Estate",
+            "EST",
+            uint256(1000),
+            admin
+        );
+        ERC1967Proxy proxy = new ERC1967Proxy(address(impl), initData);
+        token = RealEstateToken(payable(address(proxy)));
+
         assertTrue(token.transfer(alice, 300));
         assertTrue(token.transfer(bob,   200));
         assertTrue(token.transfer(carol, 100));
