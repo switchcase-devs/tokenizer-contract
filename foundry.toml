@@ -8,5 +8,6 @@ evm_version = "paris"
 optimizer = true
 optimizer_runs = 200
 gas_reports = ["RealEstateToken"]
+
 # Print logs
 ffi = false

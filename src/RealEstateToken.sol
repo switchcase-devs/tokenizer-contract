@@ -152,10 +152,6 @@ AccessControlEnumerableUpgradeable
         return account;
     }
 
-    function _delegate(address, address) internal pure override(VotesUpgradeable) {
-        revert DelegationDisabled();
-    }
-
     function _transferVotingUnits(address from, address to, uint256 amount)
     internal
     override(VotesUpgradeable)
