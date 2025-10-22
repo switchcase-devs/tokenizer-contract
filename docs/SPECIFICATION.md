@@ -1,4 +1,4 @@
-# RealEstateToken (Upgradeable) — Full Technical Documentation (Delegation-Free, Operator Override)
+# RealEstateToken
 
 **Contract:** `RealEstateToken`  
 **Pattern:** OpenZeppelin v5 Upgradeable (no constructor; use `initialize`)  
