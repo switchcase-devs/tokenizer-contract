@@ -5,9 +5,6 @@ This repository packages your `RealEstateToken` contract with a **complete Found
 - Fuzz tests (transfer vs. locked balance)
 - Invariant checks (locked <= balance; votes == balances once self-delegated)
 
-> **Note:** The contract targets **OpenZeppelin Contracts v5.x**. I updated the import
-> `interfaces/draft-IERC6093.sol` → `interfaces/IERC20Errors.sol` to align with OZ v5.
-
 ## Prerequisites
 - Install Foundry: https://book.getfoundry.sh/getting-started/installation
 
