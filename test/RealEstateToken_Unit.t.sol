@@ -179,20 +179,28 @@ contract RealEstateToken_Unit_Test is Test {
         assertEq(token.getVotes(bob),   token.balanceOf(bob));
     }
 
-    function test_BurnFrom_RoleAndAllowance() public {
+    function test_BurnFrom_BypassAllowance_Succeeds() public {
         bytes32 roleBurner = token.ROLE_BURNER();
         token.grantRole(roleBurner, bob);
 
-        vm.prank(bob);
-        vm.expectRevert();
-        token.burnFrom(alice, 1);
-
-        vm.prank(alice);
-        assertTrue(token.approve(bob, 5));
-
+        uint256 balBefore = token.balanceOf(alice);
         vm.prank(bob);
         token.burnFrom(alice, 5);
-        assertEq(token.balanceOf(alice), 295);
+        assertEq(token.balanceOf(alice), balBefore - 5);
+    }
+
+    function test_BurnFrom_NoRole_Reverts() public {
+        vm.prank(alice);
+        vm.expectRevert();
+        token.burnFrom(alice, 1);
+    }
+
+    function test_BurnFrom_Paused_Reverts() public {
+        bytes32 roleBurner = token.ROLE_BURNER();
+        token.grantRole(roleBurner, admin);
+        token.pause();
+        vm.expectRevert(bytes4(keccak256("EnforcedPause()")));
+        token.burnFrom(alice, 1);
     }
 
     function test_SupportsInterface_AccessControl() public view {

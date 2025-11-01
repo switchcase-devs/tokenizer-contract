@@ -21,19 +21,19 @@
 
 ### Role capabilities (matrix)
 
-| Capability / Function                                  | ROLE_ADMIN | ROLE_TRANSFER | ROLE_MINTER | ROLE_BURNER | ROLE_PAUSER | ROLE_WHITELIST | ROLE_TRANSFER_RESTRICT |
+| Capability / Function                             | ROLE_ADMIN | ROLE_TRANSFER | ROLE_MINTER | ROLE_BURNER | ROLE_PAUSER | ROLE_WHITELIST | ROLE_TRANSFER_RESTRICT |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| Grant/Revoke roles (`grantRole`, `revokeRole`)         | ✅         | ❌            | ❌          | ❌          | ❌          | ❌              | ❌                      |
-| Set whitelist mode (`setWhitelistMode`)                | ✅         | ❌            | ❌          | ❌          | ❌          | ❌              | ❌                      |
-| Whitelist accounts (`setWhitelist`)                    | ❌         | ❌            | ❌          | ❌          | ❌          | ✅              | ❌                      |
-| Freeze/unfreeze (`setFrozen`)                          | ❌         | ❌            | ❌          | ❌          | ❌          | ❌              | ✅                      |
-| Lock/unlock balances (`lockBalance`, `unlockBalance`)  | ❌         | ❌            | ❌          | ❌          | ❌          | ❌              | ✅                      |
-| Mint (`mint`)                                          | ❌         | ❌            | ✅          | ❌          | ❌          | ❌              | ❌                      |
-| Burn via allowance (`burnFrom`)                        | ❌         | ❌            | ❌          | ✅          | ❌          | ❌              | ❌                      |
-| Pause/Unpause (`pause`, `unpause`)                     | ❌         | ❌            | ❌          | ❌          | ✅          | ❌              | ❌                      |
-| Initiate transfer in **role-gated** mode               | ❌         | ✅            | ❌          | ❌          | ❌          | ❌              | ❌                      |
-| Initiate transfer in **whitelist** mode w/o checks     | ❌         | ✅ (caller)   | ❌          | ❌          | ❌          | ❌              | ❌                      |
-| Forced transfer (`forceTransfer`)                      | ❌         | ✅            | ❌          | ❌          | ❌          | ❌              | ❌                      |
+| Grant/Revoke roles (`grantRole`, `revokeRole`)    | ✅         | ❌            | ❌          | ❌          | ❌          | ❌              | ❌                      |
+| Set whitelist mode (`setWhitelistMode`)           | ✅         | ❌            | ❌          | ❌          | ❌          | ❌              | ❌                      |
+| Whitelist accounts (`setWhitelist`)               | ❌         | ❌            | ❌          | ❌          | ❌          | ✅              | ❌                      |
+| Freeze/unfreeze (`setFrozen`)                     | ❌         | ❌            | ❌          | ❌          | ❌          | ❌              | ✅                      |
+| Lock/unlock balances (`lockBalance`, `unlockBalance`) | ❌         | ❌            | ❌          | ❌          | ❌          | ❌              | ✅                      |
+| Mint (`mint`)                                     | ❌         | ❌            | ✅          | ❌          | ❌          | ❌              | ❌                      |
+| Burn (`burnFrom`)                        | ❌         | ❌            | ❌          | ✅          | ❌          | ❌              | ❌                      |
+| Pause/Unpause (`pause`, `unpause`)                | ❌         | ❌            | ❌          | ❌          | ✅          | ❌              | ❌                      |
+| Initiate transfer in **role-gated** mode          | ❌         | ✅            | ❌          | ❌          | ❌          | ❌              | ❌                      |
+| Initiate transfer in **whitelist** mode w/o checks | ❌         | ✅ (caller)   | ❌          | ❌          | ❌          | ❌              | ❌                      |
+| Forced transfer (`forceTransfer`)                 | ❌         | ✅            | ❌          | ❌          | ❌          | ❌              | ❌                      |
 
 > **Operator override:** `forceTransfer` bypasses **freeze**, **lock**, and **whitelist** checks; it still requires `ROLE_TRANSFER`, sufficient **balance**, and not being **paused**.
 
@@ -89,7 +89,7 @@
 ### Mint & Burn
 - `mint(address to, uint256 amount)` — **Only `ROLE_MINTER`**, reverts if paused
 - `burn(uint256 amount)` — from caller
-- `burnFrom(address account, uint256 amount)` — **Only `ROLE_BURNER`**, checks allowance, reverts if paused
+- `burnFrom(address account, uint256 amount)` — **Only `ROLE_BURNER`**, reverts if paused
 
 ### Pausable
 - `pause()` / `unpause()` — **Only `ROLE_PAUSER`**

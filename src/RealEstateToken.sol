@@ -118,7 +118,6 @@ AccessControlEnumerableUpgradeable
     override(ERC20BurnableUpgradeable)
     onlyRole(ROLE_BURNER)
     {
-        _spendAllowance(account, _msgSender(), amount);
         _burn(account, amount);
     }
 
