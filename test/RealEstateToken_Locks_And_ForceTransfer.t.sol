@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity 0.8.30;
 
 import { Test } from "forge-std/Test.sol";
 import { RealEstateToken } from "src/RealEstateToken.sol";
@@ -86,5 +86,32 @@ contract RealEstateToken_Locks_ForceTransfer_Test is Test {
         token.pause();
         vm.expectRevert(bytes4(keccak256("EnforcedPause()")));
         token.forceTransfer(alice, bob, 1, bytes("x"));
+    }
+
+    function test_Mint_To_Frozen_Address_Reverts() public {
+        token.setFrozen(bob, true);
+
+        uint256 pre = token.balanceOf(bob);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(RealEstateToken.AccountFrozen.selector, bob)
+        );
+        token.mint(bob, 1_234);
+
+        assertEq(token.balanceOf(bob), pre);
+    }
+
+    function test_Mint_To_Unwhitelisted_Address_While_Whitelist_Enabled_Reverts() public {
+        token.setWhitelistMode(true);
+        token.setWhitelist(alice, true);
+
+        uint256 pre = token.balanceOf(bob);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(RealEstateToken.NotWhitelisted.selector, bob)
+        );
+        token.mint(bob, 2_345);
+
+        assertEq(token.balanceOf(bob), pre);
     }
 }

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity 0.8.30;
 
 import { Test } from "forge-std/Test.sol";
 import { RealEstateToken } from "src/RealEstateToken.sol";
@@ -26,11 +26,16 @@ contract RealEstateToken_Votes_Test is Test {
 
         assertTrue(token.transfer(alice, 100_000));
         assertTrue(token.transfer(bob,   50_000));
+
         token.setWhitelistMode(true);
         token.setWhitelist(alice, true);
-        token.setWhitelist(bob, true);
-        vm.prank(alice); assertTrue(token.transfer(alice, 0));
-        vm.prank(bob);   assertTrue(token.transfer(bob, 0));
+        token.setWhitelist(bob,   true);
+
+        vm.prank(alice);
+        assertTrue(token.transfer(alice, 0));
+
+        vm.prank(bob);
+        assertTrue(token.transfer(bob, 0));
     }
 
     function test_SelfDelegationOnly_ThirdPartyDisabled() public {
@@ -46,18 +51,112 @@ contract RealEstateToken_Votes_Test is Test {
     function test_VotesTrackOnMintBurnTransfer() public {
         assertEq(token.getVotes(alice), token.balanceOf(alice));
         assertEq(token.getVotes(bob),   token.balanceOf(bob));
+
         token.grantRole(token.ROLE_MINTER(), admin);
         token.mint(bob, 10_000);
         assertEq(token.getVotes(bob), token.balanceOf(bob));
+
         token.grantRole(token.ROLE_BURNER(), admin);
-        vm.prank(alice); assertTrue(token.approve(admin, 5_000));
+
+        vm.prank(alice);
+        assertTrue(token.approve(admin, 5_000));
+
         token.burnFrom(alice, 5_000);
         assertEq(token.getVotes(alice), token.balanceOf(alice));
+
         token.setWhitelistMode(true);
         token.setWhitelist(alice, true);
         token.setWhitelist(bob,   true);
-        vm.prank(alice); assertTrue(token.transfer(bob, 1234));
+
+        vm.prank(alice);
+        assertTrue(token.transfer(bob, 1_234));
+
         assertEq(token.getVotes(alice), token.balanceOf(alice));
         assertEq(token.getVotes(bob),   token.balanceOf(bob));
+    }
+
+    function test_VotesZeroWhenFrozen_AndRestoreOnUnfreeze() public {
+        uint256 aliceBalance = token.balanceOf(alice);
+        assertEq(token.getVotes(alice), aliceBalance);
+
+        token.setFrozen(alice, true);
+        assertTrue(token.isFrozen(alice));
+        assertEq(token.getVotes(alice), 0);
+
+        token.setFrozen(alice, false);
+        assertFalse(token.isFrozen(alice));
+        assertEq(token.getVotes(alice), aliceBalance);
+    }
+
+    function test_VotesFollowLockedBalance() public {
+        uint256 aliceBalance = token.balanceOf(alice);
+        uint256 lockAmount   = 10_000;
+
+        token.lockBalance(alice, lockAmount);
+        assertEq(token.lockedBalanceOf(alice), lockAmount);
+        assertEq(token.getVotes(alice), aliceBalance - lockAmount);
+
+        uint256 unlockAmount = 4_000;
+        token.unlockBalance(alice, unlockAmount);
+
+        assertEq(token.lockedBalanceOf(alice), lockAmount - unlockAmount);
+        assertEq(token.getVotes(alice), aliceBalance - (lockAmount - unlockAmount));
+    }
+
+    function test_VotesZeroForUnwhitelistedWhileWhitelistEnabled() public {
+        uint256 bobBalance = token.balanceOf(bob);
+        assertEq(token.getVotes(bob), bobBalance);
+
+        token.setWhitelist(bob, false);
+        assertFalse(token.isWhitelisted(bob));
+        assertEq(token.getVotes(bob), 0);
+
+        token.setWhitelist(bob, true);
+        assertTrue(token.isWhitelisted(bob));
+        assertEq(token.getVotes(bob), bobBalance);
+    }
+
+    function test_VotesReactOnWhitelistModeEnableDisable() public {
+        uint256 bobBalance = token.balanceOf(bob);
+
+        token.setWhitelistMode(false);
+        token.setWhitelist(bob, false);
+        assertEq(token.getVotes(bob), bobBalance);
+
+        token.setWhitelistMode(true);
+        token.setWhitelist(bob, false);
+        assertEq(token.getVotes(bob), 0);
+
+        token.setWhitelistMode(false);
+        token.setWhitelist(bob, false);
+        assertEq(token.getVotes(bob), bobBalance);
+    }
+
+    function test_WhitelistModeToggle_UpdatesVotes() public {
+        uint256 aliceBalance = token.balanceOf(alice);
+        uint256 bobBalance   = token.balanceOf(bob);
+
+        assertEq(token.getVotes(alice), aliceBalance);
+        assertEq(token.getVotes(bob),   bobBalance);
+
+        token.setWhitelistMode(false);
+        token.setWhitelist(alice, true);
+        token.setWhitelist(bob,   false);
+
+        assertEq(token.getVotes(alice), aliceBalance);
+        assertEq(token.getVotes(bob),   bobBalance);
+
+        token.setWhitelistMode(true);
+
+        assertEq(token.getVotes(alice), aliceBalance);
+        assertEq(token.getVotes(bob),   0);
+
+        token.setWhitelist(bob, true);
+        assertEq(token.getVotes(bob), bobBalance);
+
+        token.setWhitelistMode(false);
+
+        assertEq(token.getVotes(alice), aliceBalance);
+        assertEq(token.getVotes(bob),   bobBalance);
     }
 }

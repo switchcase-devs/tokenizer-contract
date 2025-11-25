@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity 0.8.30;
 
 library Actors {
     address constant ADMIN = address(uint160(uint256(keccak256("ADMIN"))));
