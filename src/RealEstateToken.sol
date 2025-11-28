@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import { ERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import { ERC20PermitUpgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
-import { ERC20BurnableUpgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
-import { ERC20PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20PausableUpgradeable.sol";
-import { ERC20VotesUpgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20VotesUpgradeable.sol";
-import { VotesUpgradeable } from "@openzeppelin/contracts-upgradeable/governance/utils/VotesUpgradeable.sol";
-import { AccessControlEnumerableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlEnumerableUpgradeable.sol";
-import { NoncesUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/NoncesUpgradeable.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import {ERC20PermitUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
+import {ERC20BurnableUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
+import {ERC20PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20PausableUpgradeable.sol";
+import {ERC20VotesUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20VotesUpgradeable.sol";
+import {VotesUpgradeable} from "@openzeppelin/contracts-upgradeable/governance/utils/VotesUpgradeable.sol";
+import {AccessControlEnumerableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlEnumerableUpgradeable.sol";
+import {NoncesUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/NoncesUpgradeable.sol";
 import "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 
 contract RealEstateToken is
@@ -21,12 +22,12 @@ ERC20PausableUpgradeable,
 ERC20VotesUpgradeable,
 AccessControlEnumerableUpgradeable
 {
-    bytes32 public constant ROLE_ADMIN             = 0x00;
-    bytes32 public constant ROLE_TRANSFER          = keccak256("ROLE_TRANSFER");
-    bytes32 public constant ROLE_MINTER            = keccak256("ROLE_MINTER");
-    bytes32 public constant ROLE_BURNER            = keccak256("ROLE_BURNER");
-    bytes32 public constant ROLE_PAUSER            = keccak256("ROLE_PAUSER");
-    bytes32 public constant ROLE_WHITELIST         = keccak256("ROLE_WHITELIST");
+    bytes32 public constant ROLE_ADMIN = 0x00;
+    bytes32 public constant ROLE_TRANSFER = keccak256("ROLE_TRANSFER");
+    bytes32 public constant ROLE_MINTER = keccak256("ROLE_MINTER");
+    bytes32 public constant ROLE_BURNER = keccak256("ROLE_BURNER");
+    bytes32 public constant ROLE_PAUSER = keccak256("ROLE_PAUSER");
+    bytes32 public constant ROLE_WHITELIST = keccak256("ROLE_WHITELIST");
     bytes32 public constant ROLE_TRANSFER_RESTRICT = keccak256("ROLE_TRANSFER_RESTRICT");
 
     mapping(address => bool)    private _frozen;
@@ -37,7 +38,7 @@ AccessControlEnumerableUpgradeable
     bool private _forceBypass;
 
     address[] private _holders;
-    mapping(address => bool) private _isHolder;
+    mapping(address => uint256) private _holderIndex;
 
     error AccountFrozen(address account);
     error MissingTransferRole(address operator);
@@ -70,12 +71,12 @@ AccessControlEnumerableUpgradeable
         __ERC20Votes_init();
         __AccessControlEnumerable_init();
 
-        _grantRole(ROLE_ADMIN,             admin_);
-        _grantRole(ROLE_MINTER,            admin_);
-        _grantRole(ROLE_BURNER,            admin_);
-        _grantRole(ROLE_TRANSFER,          admin_);
-        _grantRole(ROLE_PAUSER,            admin_);
-        _grantRole(ROLE_WHITELIST,         admin_);
+        _grantRole(ROLE_ADMIN, admin_);
+        _grantRole(ROLE_MINTER, admin_);
+        _grantRole(ROLE_BURNER, admin_);
+        _grantRole(ROLE_TRANSFER, admin_);
+        _grantRole(ROLE_PAUSER, admin_);
+        _grantRole(ROLE_WHITELIST, admin_);
         _grantRole(ROLE_TRANSFER_RESTRICT, admin_);
 
         _mint(admin_, initialSupply_);
@@ -153,6 +154,30 @@ AccessControlEnumerableUpgradeable
         _mint(to, amount);
     }
 
+    function burn(uint256 amount)
+    public
+    override(ERC20BurnableUpgradeable)
+    onlyRole(ROLE_BURNER)
+    {
+        address account = _msgSender();
+
+        if (_frozen[account]) revert AccountFrozen(account);
+        if (whitelistEnabled && !_whitelisted[account]) revert NotWhitelisted(account);
+
+        _burn(account, amount);
+
+        uint256 bal = balanceOf(account);
+        uint256 locked = _locked[account];
+        if (locked > bal) {
+            uint256 diff = locked - bal;
+            _locked[account] = bal;
+            emit BalanceUnlocked(account, diff);
+        }
+
+        _updateVotingPower(account);
+    }
+
+
     function burnFrom(address account, uint256 amount)
     public
     override(ERC20BurnableUpgradeable)
@@ -162,6 +187,16 @@ AccessControlEnumerableUpgradeable
         if (whitelistEnabled && !_whitelisted[account]) revert NotWhitelisted(account);
 
         _burn(account, amount);
+
+        uint256 bal = balanceOf(account);
+        uint256 locked = _locked[account];
+        if (locked > bal) {
+            uint256 diff = locked - bal;
+            _locked[account] = bal;
+            emit BalanceUnlocked(account, diff);
+        }
+
+        _updateVotingPower(account);
     }
 
     function forceTransfer(address from, address to, uint256 amount, bytes calldata data)
@@ -169,10 +204,8 @@ AccessControlEnumerableUpgradeable
     onlyRole(ROLE_TRANSFER)
     {
         if (from == address(0)) revert ERC20InvalidSender(address(0));
-        if (to   == address(0)) revert ERC20InvalidReceiver(address(0));
-        if (data.length == 0)   revert EmptyForceTransferData();
-
-        _restoreVotingUnitsToBalance(from);
+        if (to == address(0)) revert ERC20InvalidReceiver(address(0));
+        if (data.length == 0) revert EmptyForceTransferData();
 
         _forceBypass = true;
         _transfer(from, to, amount);
@@ -225,35 +258,29 @@ AccessControlEnumerableUpgradeable
         super._transferVotingUnits(from, to, amount);
     }
 
-    function _addHolder(address account) internal {
-        if (account == address(0)) {
-            return;
-        }
-        if (_isHolder[account]) {
-            return;
-        }
+    function _syncHolder(address account) internal {
+        if (account == address(0)) return;
+
+        uint256 idx = _holderIndex[account];
+
         if (balanceOf(account) == 0) {
-            return;
+            if (idx == 0) return;
+
+            uint256 lastIdx = _holders.length;
+            if (idx != lastIdx) {
+                address last = _holders[lastIdx - 1];
+                _holders[idx - 1] = last;
+                _holderIndex[last] = idx;
+            }
+
+            _holders.pop();
+            _holderIndex[account] = 0;
+        } else {
+            if (idx != 0) return;
+
+            _holders.push(account);
+            _holderIndex[account] = _holders.length;
         }
-
-        _isHolder[account] = true;
-        _holders.push(account);
-    }
-
-    function _restoreVotingUnitsToBalance(address account) internal {
-        if (account == address(0)) {
-            return;
-        }
-
-        uint256 bal = balanceOf(account);
-        uint256 currentVotes = getVotes(account);
-
-        if (currentVotes >= bal) {
-            return;
-        }
-
-        uint256 delta = bal - currentVotes;
-        _transferVotingUnits(address(0), account, delta);
     }
 
     function _updateVotingPower(address account) internal {
@@ -298,7 +325,7 @@ AccessControlEnumerableUpgradeable
     {
         if (from != address(0) && to != address(0) && !_forceBypass) {
             if (_frozen[from]) revert AccountFrozen(from);
-            if (_frozen[to])   revert AccountFrozen(to);
+            if (_frozen[to]) revert AccountFrozen(to);
 
             uint256 fromBal = balanceOf(from);
             uint256 unlocked = fromBal - _locked[from];
@@ -307,7 +334,7 @@ AccessControlEnumerableUpgradeable
             if (whitelistEnabled) {
                 if (!hasRole(ROLE_TRANSFER, _msgSender())) {
                     if (!_whitelisted[from]) revert NotWhitelisted(from);
-                    if (!_whitelisted[to])   revert NotWhitelisted(to);
+                    if (!_whitelisted[to]) revert NotWhitelisted(to);
                 }
             } else {
                 if (!hasRole(ROLE_TRANSFER, _msgSender())) {
@@ -319,20 +346,24 @@ AccessControlEnumerableUpgradeable
         super._update(from, to, amount);
 
         if (to != address(0)) {
-            _addHolder(to);
+            _syncHolder(to);
         }
-        if (from != address(0) && balanceOf(from) > 0) {
-            _addHolder(from);
+        if (from != address(0)) {
+            _syncHolder(from);
+        }
+    }
+
+    function paused()
+    public
+    view
+    override(PausableUpgradeable)
+    returns (bool)
+    {
+        if (_forceBypass) {
+            return false;
         }
 
-        if (!_forceBypass) {
-            if (from != address(0)) {
-                _updateVotingPower(from);
-            }
-            if (to != address(0) && to != from) {
-                _updateVotingPower(to);
-            }
-        }
+        return super.paused();
     }
 
     function nonces(address owner)

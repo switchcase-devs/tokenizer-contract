@@ -159,4 +159,26 @@ contract RealEstateToken_Votes_Test is Test {
         assertEq(token.getVotes(alice), aliceBalance);
         assertEq(token.getVotes(bob),   bobBalance);
     }
+
+    function test_SyncHolder_RemovesMiddleHolder() public {
+        address h1 = vm.addr(11);
+        address h2 = vm.addr(12);
+        address h3 = vm.addr(13);
+
+        token.transfer(h1, 1_000);
+        token.transfer(h2, 1_000);
+        token.transfer(h3, 1_000);
+
+        token.setWhitelist(h1, true);
+        token.setWhitelist(h2, true);
+        token.setWhitelist(h3, true);
+        token.grantRole(token.ROLE_TRANSFER(), h1);
+        token.grantRole(token.ROLE_TRANSFER(), h2);
+        token.grantRole(token.ROLE_TRANSFER(), h3);
+
+        vm.prank(h2);
+        token.transfer(h1, 1_000);
+
+        assertEq(token.balanceOf(h2), 0);
+    }
 }

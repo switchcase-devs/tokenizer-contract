@@ -81,13 +81,6 @@ contract RealEstateToken_Locks_ForceTransfer_Test is Test {
         assertEq(token.balanceOf(bob), 100_000 + 10_001 + 10_000);
     }
 
-    function test_ForceTransfer_RejectedWhenPaused() public {
-        token.grantRole(token.ROLE_TRANSFER(), admin);
-        token.pause();
-        vm.expectRevert(bytes4(keccak256("EnforcedPause()")));
-        token.forceTransfer(alice, bob, 1, bytes("x"));
-    }
-
     function test_Mint_To_Frozen_Address_Reverts() public {
         token.setFrozen(bob, true);
 
@@ -113,5 +106,33 @@ contract RealEstateToken_Locks_ForceTransfer_Test is Test {
         token.mint(bob, 2_345);
 
         assertEq(token.balanceOf(bob), pre);
+    }
+
+    function test_PauseBlocksRegularButAllowsForceTransfer() public {
+        token.pause();
+        assertTrue(token.paused());
+
+        vm.expectRevert(abi.encodeWithSignature("EnforcedPause()"));
+        token.transfer(alice, 1);
+
+        vm.expectRevert(abi.encodeWithSignature("EnforcedPause()"));
+        token.mint(alice, 1);
+
+        vm.expectRevert(abi.encodeWithSignature("EnforcedPause()"));
+        token.burnFrom(alice, 1);
+
+        uint256 balAliceBefore = token.balanceOf(alice);
+        uint256 balBobBefore   = token.balanceOf(bob);
+
+        bytes memory data = bytes("emergency");
+        token.forceTransfer(alice, bob, 10, data);
+
+        uint256 balAliceAfter = token.balanceOf(alice);
+        uint256 balBobAfter   = token.balanceOf(bob);
+
+        assertEq(balAliceAfter, balAliceBefore - 10);
+        assertEq(balBobAfter,   balBobBefore + 10);
+
+        assertTrue(token.paused());
     }
 }

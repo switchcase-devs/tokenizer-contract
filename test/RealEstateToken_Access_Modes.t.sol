@@ -86,21 +86,6 @@ contract RealEstateToken_Access_Modes_Test is Test {
         assertTrue(token.transfer(bob, 10));
     }
 
-    function test_PausePreventsAllTransfers_IncludingForceTransfer() public {
-        token.setWhitelistMode(true);
-        token.setWhitelist(alice, true);
-        token.setWhitelist(bob, true);
-        vm.prank(alice);
-        assertTrue(token.transfer(bob, 5));
-        token.pause();
-        vm.prank(alice);
-        vm.expectRevert(bytes4(keccak256("EnforcedPause()")));
-        token.transfer(bob, 1);
-        token.grantRole(token.ROLE_TRANSFER(), admin);
-        vm.expectRevert(bytes4(keccak256("EnforcedPause()")));
-        token.forceTransfer(alice, bob, 1, bytes("pause-proof"));
-    }
-
     function test_FreezeBlocksBothDirections() public {
         token.setWhitelistMode(true);
         token.setWhitelist(alice, true);
